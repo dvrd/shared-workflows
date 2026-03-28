@@ -24,7 +24,9 @@ jobs:
           fi
 
           if [ -n "$ERRORS" ]; then
-            printf '%s' "::error::"; printf '%b' "$ERRORS"
+            printf '%b' "$ERRORS" | while IFS= read -r line; do
+              [ -n "$line" ] && echo "::error::${line}"
+            done
             printf '%b' "$ERRORS"
             exit 1
           fi

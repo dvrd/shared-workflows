@@ -26,9 +26,10 @@ jobs:
           # Escape HTML special characters in user-controlled fields
           SAFE_TITLE=$(printf '%s' "$PR_TITLE" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
           SAFE_AUTHOR=$(printf '%s' "$AUTHOR" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
+          SAFE_REPO=$(printf '%s' "$REPO" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
           TEXT="🔔 <b>PR needs your approval</b>
 
-<b>Repo:</b> ${REPO}
+<b>Repo:</b> ${SAFE_REPO}
 <b>Author:</b> ${SAFE_AUTHOR}
 <b>Title:</b> ${SAFE_TITLE}
 
@@ -37,7 +38,7 @@ jobs:
             -d "chat_id=${CHAT_ID}" \
             --data-urlencode "text=${TEXT}" \
             -d "parse_mode=HTML" \
-            -d "disable_web_page_preview=true") || echo "::warning::Telegram notification failed"
+            -d "disable_web_page_preview=true") || true
           if echo "$RESPONSE" | grep -q '"ok":true'; then
             echo "Telegram notification sent."
           else

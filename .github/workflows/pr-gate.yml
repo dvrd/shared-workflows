@@ -62,6 +62,12 @@ jobs:
             core.setOutput('url', pr.html_url);
             core.setOutput('branch', pr.head.ref);
 
+      - name: No open PR found — skipping gate
+        if: steps.pr.outputs.found == 'false'
+        env:
+          HEAD_REF: ${{ inputs.head_ref }}
+        run: echo "No open PR found for branch ${HEAD_REF} — gate skipped."
+
       - name: Wait for Coolify preview deploy
         if: steps.pr.outputs.found == 'true'
         id: preview
@@ -111,8 +117,9 @@ jobs:
         run: |
           # Escape HTML special characters in user-controlled fields
           SAFE_TITLE=$(printf '%s' "$PR_TITLE" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
+          SAFE_REPO=$(printf '%s' "$REPO" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
           TEXT="✅ <b>PR #${PR_NUMBER} ready to merge</b>
-<b>Repo:</b> ${REPO}
+<b>Repo:</b> ${SAFE_REPO}
 <b>Title:</b> ${SAFE_TITLE}
 
 CI passed + preview deployment healthy.
@@ -123,7 +130,7 @@ CI passed + preview deployment healthy.
             -d "chat_id=${CHAT_ID}" \
             --data-urlencode "text=${TEXT}" \
             -d "parse_mode=HTML" \
-            -d "disable_web_page_preview=true")
+            -d "disable_web_page_preview=true") || true
           if echo "$RESPONSE" | grep -q '"ok":true'; then
             echo "Telegram notification sent."
           else
