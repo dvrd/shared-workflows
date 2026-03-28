@@ -1,0 +1,22 @@
+name: Issue Check
+
+on:
+  workflow_call:
+
+jobs:
+  check:
+    name: PR linked to issue
+    runs-on: [self-hosted, Linux]
+    steps:
+      - name: Check PR body references an issue
+        env:
+          BODY: ${{ github.event.pull_request.body }}
+        run: |
+          # Accept GitHub issues (#N) or Paperclip identifiers (e.g. DON-18, ARN-5)
+          if echo "$BODY" | grep -iqE "(close[sd]?|fix(e[sd])?|resolve[sd]?)\s+#[0-9]+" || \
+             echo "$BODY" | grep -iqE "[A-Z]+-[0-9]+"; then
+            echo "✓ Issue reference found"
+          else
+            echo "✗ PR must reference an issue: Closes #N, Fixes #N, Resolves #N, or a Paperclip ID (e.g. DON-18)"
+            exit 1
+          fi

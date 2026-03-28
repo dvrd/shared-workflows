@@ -1,0 +1,32 @@
+name: Issue References Check
+
+on:
+  workflow_call:
+
+jobs:
+  check-refs:
+    runs-on: [self-hosted, Linux]
+    steps:
+      - name: Check for Paperclip and GitHub issue references
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          TEXT="$PR_TITLE $PR_BODY"
+          ERRORS=""
+
+          if ! echo "$TEXT" | grep -iqE 'DON-[0-9]+'; then
+            ERRORS="${ERRORS}Missing Paperclip issue reference (DON-XX) in PR title or body.\n"
+          fi
+
+          if ! echo "$TEXT" | grep -qE '#[0-9]+|[Cc]loses[[:space:]]#[0-9]+|[Ff]ixes[[:space:]]#[0-9]+'; then
+            ERRORS="${ERRORS}Missing GitHub issue reference (#XX, Closes #XX, or Fixes #XX) in PR title or body.\n"
+          fi
+
+          if [ -n "$ERRORS" ]; then
+            echo "::error::$ERRORS"
+            printf "$ERRORS"
+            exit 1
+          fi
+
+          echo "All issue references found."

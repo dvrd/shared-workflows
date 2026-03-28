@@ -1,0 +1,21 @@
+name: Check Branch Name
+
+on:
+  workflow_call:
+
+jobs:
+  check-branch:
+    runs-on: [self-hosted, Linux]
+    steps:
+      - name: Check branch name format
+        run: |
+          BRANCH="${{ github.head_ref }}"
+          PATTERN="^(feat|fix|chore|refactor|docs|test|style|ci|perf|build|revert|hotfix)/[a-z0-9.-]+-[0-9]+$"
+          if [[ ! "$BRANCH" =~ $PATTERN ]]; then
+            echo "❌ Branch name '$BRANCH' does not follow the required format."
+            echo "Required: <type>/<repo>-<issue-number>"
+            echo "Example: feat/onlead-123, fix/newt-42, chore/hrvst-7"
+            echo "Valid types: feat, fix, chore, refactor, docs, test, style, ci, perf, build, revert, hotfix"
+            exit 1
+          fi
+          echo "✅ Branch name '$BRANCH' is valid."
