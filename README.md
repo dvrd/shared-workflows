@@ -25,6 +25,8 @@ on:
 jobs:
   check-branch:
     uses: dvrd/shared-workflows/.github/workflows/check-branch-name.yml@main
+    with:
+      branch_ref: ${{ github.head_ref }}
 ```
 
 ### issue-check
@@ -99,6 +101,7 @@ jobs:
       github.event.workflow_run.conclusion == 'success'
     uses: dvrd/shared-workflows/.github/workflows/pr-gate.yml@main
     with:
+      head_ref: ${{ github.event.workflow_run.head_branch }}
       product_domain: ariel.donostia.ai
       health_path: /health
     secrets: inherit

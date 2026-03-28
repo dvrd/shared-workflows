@@ -25,7 +25,7 @@ jobs:
 
           if [ -n "$ERRORS" ]; then
             echo "::error::$ERRORS"
-            printf "$ERRORS"
+            printf '%s' "$ERRORS"
             exit 1
           fi
 

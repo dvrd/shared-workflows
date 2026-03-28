@@ -2,6 +2,12 @@ name: Check Branch Name
 
 on:
   workflow_call:
+    inputs:
+      branch_ref:
+        description: "Branch name to validate. Defaults to github.head_ref if not provided."
+        required: false
+        type: string
+        default: ""
 
 jobs:
   check-branch:
@@ -9,7 +15,7 @@ jobs:
     steps:
       - name: Check branch name format
         run: |
-          BRANCH="${{ github.head_ref }}"
+          BRANCH="${{ inputs.branch_ref || github.head_ref }}"
           PATTERN="^(feat|fix|chore|refactor|docs|test|style|ci|perf|build|revert|hotfix)/[a-z0-9.-]+-[0-9]+$"
           if [[ ! "$BRANCH" =~ $PATTERN ]]; then
             echo "❌ Branch name '$BRANCH' does not follow the required format."
