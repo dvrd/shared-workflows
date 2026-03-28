@@ -7,8 +7,8 @@ Reusable GitHub Actions workflows shared across all dvrd product repos (ariel, h
 | Workflow | Trigger | Description |
 |----------|---------|-------------|
 | `check-branch-name.yml` | `pull_request` | Validates branch naming convention `<type>/<repo>-<issue>` |
-| `issue-check.yml` | `pull_request` | Checks PR body references a GitHub issue or Paperclip ID |
-| `issue-refs.yml` | `pull_request` | Checks PR contains both `DON-XX` and `#XX` / `Closes #XX` |
+| `issue-check.yml` | `pull_request` | Lightweight check: PR body references a GitHub issue or Paperclip ID |
+| `issue-refs.yml` | `pull_request` | Strict check: PR must contain both a `DON-XX` Paperclip ID and a GitHub `#XX` reference |
 | `notify-pr.yml` | `pull_request` | Sends Telegram notification when PR is ready for review |
 | `release.yml` | `push` to `main` | Runs semantic release and updates CHANGELOG.md + VERSION |
 | `pr-gate.yml` | `workflow_run` | Notifies board only when CI passes AND preview is healthy |
@@ -76,7 +76,8 @@ on:
 jobs:
   release:
     uses: dvrd/shared-workflows/.github/workflows/release.yml@main
-    secrets: inherit
+    # with:
+    #   go_version: "1.24"  # optional, defaults to 1.24
 ```
 
 ### pr-gate
