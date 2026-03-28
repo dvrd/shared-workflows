@@ -26,12 +26,11 @@ on:
       TELEGRAM_CHAT_ID:
         required: true
 
-permissions:
-  pull-requests: read
-
 jobs:
   gate:
     runs-on: [self-hosted, Linux]
+    permissions:
+      pull-requests: read
     steps:
       - name: Get PR details
         id: pr
