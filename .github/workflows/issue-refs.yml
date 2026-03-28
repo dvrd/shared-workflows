@@ -19,12 +19,12 @@ jobs:
             ERRORS="${ERRORS}Missing Paperclip issue reference (DON-XX) in PR title or body.\n"
           fi
 
-          if ! echo "$TEXT" | grep -qE '(^|[[:space:]])#[0-9]+|[Cc]loses[[:space:]]#[0-9]+|[Ff]ixes[[:space:]]#[0-9]+'; then
+          if ! echo "$TEXT" | grep -qE '(^|[^a-zA-Z0-9])#[0-9]+|[Cc]loses[[:space:]]#[0-9]+|[Ff]ixes[[:space:]]#[0-9]+'; then
             ERRORS="${ERRORS}Missing GitHub issue reference (#XX, Closes #XX, or Fixes #XX) in PR title or body.\n"
           fi
 
           if [ -n "$ERRORS" ]; then
-            printf '::error::%b' "$ERRORS"
+            printf '%s' "::error::"; printf '%b' "$ERRORS"
             printf '%b' "$ERRORS"
             exit 1
           fi

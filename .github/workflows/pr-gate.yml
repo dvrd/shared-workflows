@@ -70,7 +70,7 @@ jobs:
           PRODUCT_DOMAIN: ${{ inputs.product_domain }}
           HEALTH_PATH: ${{ inputs.health_path }}
         run: |
-          if [[ ! "$PRODUCT_DOMAIN" =~ ^[a-zA-Z0-9._-]+\.[a-zA-Z]{2,}$ ]]; then
+          if [[ ! "$PRODUCT_DOMAIN" =~ ^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$ ]]; then
             echo "::error::Invalid product_domain input: ${PRODUCT_DOMAIN}"
             exit 1
           fi
@@ -83,7 +83,7 @@ jobs:
 
           # Poll for up to 5 minutes (Coolify builds take time)
           for i in $(seq 1 30); do
-            STATUS=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 --max-time 10 "${PREVIEW_URL}" 2>/dev/null)
+            STATUS=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 --max-time 10 "${PREVIEW_URL}")
             echo "  Attempt ${i}/30: ${STATUS}"
             if [ "$STATUS" = "200" ]; then
               echo "healthy=true" >> $GITHUB_OUTPUT
@@ -109,9 +109,11 @@ jobs:
           BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
+          # Escape HTML special characters in user-controlled fields
+          SAFE_TITLE=$(printf '%s' "$PR_TITLE" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
           TEXT="✅ <b>PR #${PR_NUMBER} ready to merge</b>
 <b>Repo:</b> ${REPO}
-<b>Title:</b> ${PR_TITLE}
+<b>Title:</b> ${SAFE_TITLE}
 
 CI passed + preview deployment healthy.
 🔗 Review: ${PR_URL}

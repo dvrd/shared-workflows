@@ -23,14 +23,17 @@ jobs:
           BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
+          # Escape HTML special characters in user-controlled fields
+          SAFE_TITLE=$(printf '%s' "$PR_TITLE" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
+          SAFE_AUTHOR=$(printf '%s' "$AUTHOR" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
           TEXT="🔔 <b>PR needs your approval</b>
 
 <b>Repo:</b> ${REPO}
-<b>Author:</b> ${AUTHOR}
-<b>Title:</b> ${PR_TITLE}
+<b>Author:</b> ${SAFE_AUTHOR}
+<b>Title:</b> ${SAFE_TITLE}
 
 👉 ${PR_URL}"
-          RESPONSE=$(curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+          RESPONSE=$(curl -s --connect-timeout 10 --max-time 15 -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
             -d "chat_id=${CHAT_ID}" \
             --data-urlencode "text=${TEXT}" \
             -d "parse_mode=HTML" \
