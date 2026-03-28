@@ -2,12 +2,19 @@ name: Release
 
 on:
   workflow_call:
+    inputs:
+      go_version:
+        description: "Go version to use (e.g. '1.22'). Defaults to 1.22."
+        required: false
+        type: string
+        default: "1.22"
 
 jobs:
   release:
     name: Semantic Release
     runs-on: [self-hosted, Linux]
-    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    timeout-minutes: 10
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
 
     permissions:
       contents: write
@@ -19,7 +26,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: go-semantic-release/action@v1
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ inputs.go_version }}
+          cache: false
+
+      - uses: go-semantic-release/action@v1.24.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           changelog-file: CHANGELOG.md

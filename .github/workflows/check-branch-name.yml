@@ -14,8 +14,15 @@ jobs:
     runs-on: [self-hosted, Linux]
     steps:
       - name: Check branch name format
+        env:
+          BRANCH_REF_INPUT: ${{ inputs.branch_ref }}
+          HEAD_REF_DEFAULT: ${{ github.head_ref }}
+        shell: bash
         run: |
-          BRANCH="${{ inputs.branch_ref || github.head_ref }}"
+          BRANCH="${BRANCH_REF_INPUT}"
+          if [ -z "$BRANCH" ]; then
+            BRANCH="${HEAD_REF_DEFAULT}"
+          fi
           PATTERN="^(feat|fix|chore|refactor|docs|test|style|ci|perf|build|revert|hotfix)/[a-z0-9.-]+-[0-9]+$"
           if [[ ! "$BRANCH" =~ $PATTERN ]]; then
             echo "❌ Branch name '$BRANCH' does not follow the required format."

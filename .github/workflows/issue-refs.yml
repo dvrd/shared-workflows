@@ -15,17 +15,17 @@ jobs:
           TEXT="$PR_TITLE $PR_BODY"
           ERRORS=""
 
-          if ! echo "$TEXT" | grep -iqE 'DON-[0-9]+'; then
+          if ! echo "$TEXT" | grep -iqE '(DON|ARN|HRV|ONL|NWT)-[0-9]+'; then
             ERRORS="${ERRORS}Missing Paperclip issue reference (DON-XX) in PR title or body.\n"
           fi
 
-          if ! echo "$TEXT" | grep -qE '#[0-9]+|[Cc]loses[[:space:]]#[0-9]+|[Ff]ixes[[:space:]]#[0-9]+'; then
+          if ! echo "$TEXT" | grep -qE '(^|[[:space:]])#[0-9]+|[Cc]loses[[:space:]]#[0-9]+|[Ff]ixes[[:space:]]#[0-9]+'; then
             ERRORS="${ERRORS}Missing GitHub issue reference (#XX, Closes #XX, or Fixes #XX) in PR title or body.\n"
           fi
 
           if [ -n "$ERRORS" ]; then
-            echo "::error::$ERRORS"
-            printf '%s' "$ERRORS"
+            printf '::error::%b' "$ERRORS"
+            printf '%b' "$ERRORS"
             exit 1
           fi
 

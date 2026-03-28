@@ -1,7 +1,7 @@
 # PR Gate — Only notify board when EVERYTHING is green
 #
 # ✅ CI passes + preview healthy → Telegram: "PR #X ready to merge" + preview URL
-# ❌ Anything fails             → silence (agent fixes on next heartbeat)
+# ❌ Preview timeout            → job fails (red check), no Telegram notification sent
 #
 # Caller workflow must filter on workflow_run.conclusion == 'success' before calling this.
 # Required secrets: TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
@@ -33,15 +33,18 @@ on:
 jobs:
   gate:
     runs-on: [self-hosted, Linux]
+    timeout-minutes: 15
     permissions:
       pull-requests: read
     steps:
       - name: Get PR details
         id: pr
         uses: actions/github-script@v7
+        env:
+          HEAD_REF: ${{ inputs.head_ref }}
         with:
           script: |
-            const head_branch = '${{ inputs.head_ref }}';
+            const head_branch = process.env.HEAD_REF;
             const prs = await github.rest.pulls.list({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -62,25 +65,35 @@ jobs:
       - name: Wait for Coolify preview deploy
         if: steps.pr.outputs.found == 'true'
         id: preview
+        env:
+          PR_NUM: ${{ steps.pr.outputs.number }}
+          PRODUCT_DOMAIN: ${{ inputs.product_domain }}
+          HEALTH_PATH: ${{ inputs.health_path }}
         run: |
-          PR_NUM="${{ steps.pr.outputs.number }}"
-          PREVIEW_URL="https://${PR_NUM}.${{ inputs.product_domain }}${{ inputs.health_path }}"
+          if [[ ! "$PRODUCT_DOMAIN" =~ ^[a-zA-Z0-9._-]+\.[a-zA-Z]{2,}$ ]]; then
+            echo "::error::Invalid product_domain input: ${PRODUCT_DOMAIN}"
+            exit 1
+          fi
+          if [[ ! "$HEALTH_PATH" =~ ^/[a-zA-Z0-9/_-]*$ ]]; then
+            echo "::error::Invalid health_path input: ${HEALTH_PATH}"
+            exit 1
+          fi
+          PREVIEW_URL="https://${PR_NUM}.${PRODUCT_DOMAIN}${HEALTH_PATH}"
           echo "Waiting for preview at ${PREVIEW_URL}..."
 
           # Poll for up to 5 minutes (Coolify builds take time)
           for i in $(seq 1 30); do
-            STATUS=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 --max-time 10 "${PREVIEW_URL}" 2>/dev/null || echo "000")
+            STATUS=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 --max-time 10 "${PREVIEW_URL}" 2>/dev/null)
             echo "  Attempt ${i}/30: ${STATUS}"
             if [ "$STATUS" = "200" ]; then
               echo "healthy=true" >> $GITHUB_OUTPUT
-              echo "preview_url=https://${PR_NUM}.${{ inputs.product_domain }}" >> $GITHUB_OUTPUT
+              echo "preview_url=https://${PR_NUM}.${PRODUCT_DOMAIN}" >> $GITHUB_OUTPUT
               exit 0
             fi
             sleep 10
           done
 
-          echo "Preview not healthy after 5 minutes"
-          echo "healthy=false" >> $GITHUB_OUTPUT
+          echo "::error::Preview at ${PREVIEW_URL} did not return 200 after 5 minutes"
           exit 1
 
       - name: "✅ All green → notify board"
@@ -92,17 +105,25 @@ jobs:
           PR_TITLE: ${{ steps.pr.outputs.title }}
           PR_URL: ${{ steps.pr.outputs.url }}
           PREVIEW_URL: ${{ steps.preview.outputs.preview_url }}
+          REPO: ${{ github.repository }}
+          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
-          TEXT="✅ *PR #${PR_NUMBER} ready to merge*
-          *Repo:* ${{ github.repository }}
-          *Title:* ${PR_TITLE}
+          TEXT="✅ <b>PR #${PR_NUMBER} ready to merge</b>
+<b>Repo:</b> ${REPO}
+<b>Title:</b> ${PR_TITLE}
 
-          CI passed + preview deployment healthy.
-          🔗 Review: ${PR_URL}
-          🌐 Preview: ${PREVIEW_URL}"
+CI passed + preview deployment healthy.
+🔗 Review: ${PR_URL}
+🌐 Preview: ${PREVIEW_URL}"
 
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
-            -d "text=${TEXT}" \
-            -d "parse_mode=Markdown" \
-            -d "disable_web_page_preview=true"
+          RESPONSE=$(curl -s --connect-timeout 10 --max-time 15 -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+            -d "chat_id=${CHAT_ID}" \
+            --data-urlencode "text=${TEXT}" \
+            -d "parse_mode=HTML" \
+            -d "disable_web_page_preview=true")
+          if echo "$RESPONSE" | grep -q '"ok":true'; then
+            echo "Telegram notification sent."
+          else
+            echo "::warning::Telegram notification failed"
+          fi
